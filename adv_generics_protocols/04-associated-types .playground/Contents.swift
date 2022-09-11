@@ -5,13 +5,15 @@ import Foundation
 
 protocol Distribution {
     
-  func sample() -> Int
-  func sample(count: Int) -> [Int]
+    associatedtype Value
+    
+    func sample() -> Value
+    func sample(count: Int) -> [Value]
 }
 
 extension Distribution {
   
-  func sample(count: Int) -> [Int] {
+  func sample(count: Int) -> [Value] {
     return (1...count).map { _ in sample() }
   }
 }
@@ -35,5 +37,51 @@ struct UniformDistribution: Distribution {
 
 let d20 = UniformDistribution(range: 1...10)
 d20.sample(count: 100)
+
+
+struct NormalDistribution: Distribution {
+
+    typealias Value = Double
+    
+    var mean, stdDev: Double
+    
+    private func generateRandomUnifomrs() -> (Double, Double) {
+        let u1 = Double.random(in: Double.leastNormalMagnitude..<1.0)
+        let u2 = Double.random(in: Double.leastNormalMagnitude..<1.0)
+        
+        return (u1, u2)
+
+    }
+    
+    func sample() -> Double {
+        let (u1, u2) = generateRandomUnifomrs()
+        let z0 = (-2.0 * log(u1)).squareRoot() * cos(2 * .pi * u2)
+        return z0 * stdDev + mean
+    }
+    
+    func sample(count: Int) -> [Double] {
+        precondition(count > 0, "Count must be greater than zero")
+        var result: [Double] = []
+        result.reserveCapacity(count)
+        
+        for _ in 1...count/2 {
+            let (u1, u2) = generateRandomUnifomrs()
+            let z0 = (-2 * log(u1)).squareRoot() * cos(2 * .pi * u2)
+            let z1 = (-2 * log(u1)).squareRoot() * sin(2 * .pi * u2)
+            
+            result.append(z0 * stdDev + mean)
+            result.append(z1 * stdDev + mean)
+        }
+        
+        if count & 2 == 1 {
+            result.append(sample())
+        }
+        return result
+    }
+    
+}
+
+let iq = NormalDistribution(mean: 100, stdDev: 15)
+iq.sample(count: 100)
 
 
